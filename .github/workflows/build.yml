@@ -29,7 +29,9 @@ jobs:
 
       - name: Move Tree
         run: |
-          mv $GITHUB_WORKSPACE/device/samsung/a13 ~/twrp/device/samsung/a13
+          # Create the path if it doesn't exist and move the checked-out files
+          mkdir -p ~/twrp/device/samsung/a13
+          cp -R $GITHUB_WORKSPACE/device/samsung/a13/* ~/twrp/device/samsung/a13/
 
       - name: Build
         run: |
