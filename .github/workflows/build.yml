@@ -1,7 +1,7 @@
-name: Recovery Build
+name: Recovery Build SM-A135F
 
 on:
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,41 +9,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Cleanup Space
-        run: |
-          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /opt/ghc
-          sudo apt-get clean
-
-      - name: Install Build Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
-          libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev \
-          libxml2-utils xsltproc unzip fontconfig
-
-      - name: Set up Minimal Manifest
-        run: |
-          mkdir ~/twrp
-          cd ~/twrp
-          repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
-          repo sync -j$(nproc --all)
-
-      - name: Clone Device Tree
-        run: |
-          cd ~/twrp
-          git clone ${{ github.server_url }}/${{ github.repository }} device/samsung/a13 [cite: 2, 5]
-
-      - name: Build Recovery
-        run: |
-          cd ~/twrp
-          export ALLOW_MISSING_DEPENDENCIES=true 
-          . build/envsetup.sh
-          lunch twrp_a13-eng [cite: 1]
-          mka recoveryimage -j$(nproc --all)
-
-      - name: Upload Artifacts
-        uses: actions/actions/upload-artifact@v4
         with:
-          name: TWRP-A13-Build
-          path: ~/twrp/out/target/product/a13/recovery.img
+          path: device/samsung/a13
+
+      - name: Install Repo
+        run: |
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
+
+      - name: Sync Source
+        run: |
+          mkdir ~/twrp && cd ~/twrp
+          git config --global user.email "zorin@example.com"
+          git config --global user.name "Zorin"
+          repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
+          repo sync -j$(nproc) --force-sync
+
+      - name: Move Tree
+        run: |
+          mv $GITHUB_WORKSPACE/device/samsung/a13 ~/twrp/device/samsung/a13
+
+      - name: Build
+        run: |
+          cd ~/twrp
+          export ALLOW_MISSING_DEPENDENCIES=true
+          . build/envsetup.sh
+          lunch twrp_a13-eng
+          mka recoveryimage -j$(nproc)
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: TWRP-A135F-IMG
+          path: /home/runner/twrp/out/target/product/a13/recovery.img
